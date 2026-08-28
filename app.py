@@ -74,18 +74,31 @@ st.caption("A 90-second AI reading check — built into a visit that already hap
 
 # Age-appropriate passages: reading demand needs to match age, or a
 # child can be wrongly flagged just for developmental stage, not a
-# real reading concern.
+# real reading concern. Multiple equivalent-difficulty variants per
+# age band so the SAME child isn't shown the identical passage every
+# year - reduces memorization while keeping difficulty standardized.
 AGE_PASSAGES = {
     "6–9 years (short passage)": {
-        "text": "The sun was bright in the sky. A little dog ran across the green field. He saw a red ball near the old tree.",
+        "variants": [
+            "The sun was bright in the sky. A little dog ran across the green field. He saw a red ball near the old tree.",
+            "The rain fell on the small house. A young cat sat by the warm fire. She heard a loud sound near the front door.",
+            "The moon was high above the hill. A brown goat walked past the old fence. It found a soft leaf near the tall grass.",
+        ],
         "note": "~60–90 sec reading task",
     },
     "9+ years (longer passage)": {
-        "text": "The sun was bright in the sky. A little dog ran across the green field, chasing a butterfly. He saw a red ball near the old tree and stopped to pick it up before running home.",
+        "variants": [
+            "The sun was bright in the sky. A little dog ran across the green field, chasing a butterfly. He saw a red ball near the old tree and stopped to pick it up before running home.",
+            "The wind was strong near the coast. A tall ship sailed across the calm sea, carrying fresh fruit. The sailors saw dark clouds forming and quickly turned back toward the harbor.",
+        ],
         "note": "~90 sec reading task",
     },
     "3–6 years (word list only)": {
-        "text": "cat dog sun ball tree run big red",
+        "variants": [
+            "cat dog sun ball tree run big red",
+            "cow hen cup pen box top mat sit",
+            "fox hat map pot bus fan wet six",
+        ],
         "note": "~20–30 sec, simple word list, not a full passage",
     },
 }
@@ -123,7 +136,14 @@ with col_b:
         st.session_state.session_id += 1
         st.rerun()
 
-EXPECTED_PASSAGE = AGE_PASSAGES[age_group]["text"]
+import random
+
+# Pick a passage variant for THIS child (stable during their turn,
+# changes automatically for the next child via session_id + age_group).
+passage_key = f"passage_{st.session_state.session_id}_{age_group}"
+if passage_key not in st.session_state:
+    st.session_state[passage_key] = random.choice(AGE_PASSAGES[age_group]["variants"])
+EXPECTED_PASSAGE = st.session_state[passage_key]
 
 st.markdown(
     f"""
