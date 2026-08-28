@@ -93,6 +93,12 @@ AGE_PASSAGES = {
 if "session_id" not in st.session_state:
     st.session_state.session_id = 0
 
+# Defensive guard: if an older version of this app left session_log as
+# a list (previous format) in this browser's cached state, reset it to
+# the current dict format instead of crashing.
+if "session_log" in st.session_state and not isinstance(st.session_state.session_log, dict):
+    st.session_state.session_log = {}
+
 col_a, col_b = st.columns([3, 1])
 with col_a:
     age_group = st.selectbox("Select the child's age group:", list(AGE_PASSAGES.keys()))
