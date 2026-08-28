@@ -19,23 +19,46 @@ def analyze_reading(expected_text, actual_transcript, flag_threshold=0.15):
     matcher = difflib.SequenceMatcher(None, expected_words, actual_words)
 
     skipped_words, substituted_words, added_words = [], [], []
+    # word_errors counts actual WORDS affected, not the number of
+    # mismatched blocks - a single block spanning 20 words must count
+    # as 20 errors, not 1.
+    word_errors = 0
+
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == 'delete':
-            skipped_words.extend(expected_words[i1:i2])
+            skipped = expected_words[i1:i2]
+            skipped_words.extend(skipped)
+            word_errors += len(skipped)
         elif tag == 'replace':
-            substituted_words.append({'expected': ' '.join(expected_words[i1:i2]),
-                                       'actual': ' '.join(actual_words[j1:j2])})
+            exp_slice = expected_words[i1:i2]
+            act_slice = actual_words[j1:j2]
+            substituted_words.append({'expected': ' '.join(exp_slice),
+                                       'actual': ' '.join(act_slice)})
+            # a replace block is at least as wrong as the longer side -
+            # e.g. 24 expected words replaced by 2 actual words is 24
+            # errors, not 1.
+            word_errors += max(len(exp_slice), len(act_slice))
         elif tag == 'insert':
-            added_words.extend(actual_words[j1:j2])
+            added = actual_words[j1:j2]
+            added_words.extend(added)
+            word_errors += len(added)
 
     total_expected = len(expected_words)
-    total_errors = len(skipped_words) + len(substituted_words) + len(added_words)
-    error_rate = total_errors / total_expected if total_expected else 0
-    flag = "NEEDS A CLOSER LOOK" if error_rate > flag_threshold else "NORMAL"
+    error_rate = word_errors / total_expected if total_expected else 1.0
+
+    # Sanity guard: if the reading is dramatically shorter than expected,
+    # this is not a valid attempt at the passage - flag it outright rather
+    # than let a short clip look "accurate" by having few words to compare.
+    coverage = len(actual_words) / total_expected if total_expected else 0
+    if coverage < 0.5:
+        flag = "NEEDS A CLOSER LOOK"
+        error_rate = max(error_rate, 1 - coverage)
+    else:
+        flag = "NEEDS A CLOSER LOOK" if error_rate > flag_threshold else "NORMAL"
 
     return {
         "flag": flag,
-        "error_rate_percent": round(error_rate * 100, 1),
+        "error_rate_percent": round(min(error_rate, 1.0) * 100, 1),
         "skipped_words": skipped_words,
         "substituted_words": substituted_words,
         "added_words": added_words,
