@@ -72,16 +72,53 @@ def load_whisper_model():
 st.title("🎙️ SwaraSetu-RBSK")
 st.caption("A 90-second AI reading check — built into a visit that already happens.")
 
-EXPECTED_PASSAGE = "The sun was bright in the sky. A little dog ran across the green field. He saw a red ball near the old tree."
+# Age-appropriate passages: reading demand needs to match age, or a
+# child can be wrongly flagged just for developmental stage, not a
+# real reading concern.
+AGE_PASSAGES = {
+    "6–9 years (short passage)": {
+        "text": "The sun was bright in the sky. A little dog ran across the green field. He saw a red ball near the old tree.",
+        "note": "~60–90 sec reading task",
+    },
+    "9+ years (longer passage)": {
+        "text": "The sun was bright in the sky. A little dog ran across the green field, chasing a butterfly. He saw a red ball near the old tree and stopped to pick it up before running home.",
+        "note": "~90 sec reading task",
+    },
+    "3–6 years (word list only)": {
+        "text": "cat dog sun ball tree run big red",
+        "note": "~20–30 sec, simple word list, not a full passage",
+    },
+}
 
-st.markdown("### Step 1 — Read this passage aloud")
+if "session_id" not in st.session_state:
+    st.session_state.session_id = 0
+
+col_a, col_b = st.columns([3, 1])
+with col_a:
+    age_group = st.selectbox("Select the child's age group:", list(AGE_PASSAGES.keys()))
+with col_b:
+    st.write("")
+    st.write("")
+    if st.button("🔄 New Child / Reset"):
+        st.session_state.session_id += 1
+        st.rerun()
+
+EXPECTED_PASSAGE = AGE_PASSAGES[age_group]["text"]
+
+st.markdown("### Step 1 — Read this aloud")
 st.info(EXPECTED_PASSAGE)
+st.caption(AGE_PASSAGES[age_group]["note"])
 
 st.markdown("### Step 2 — Upload or record your reading")
-audio_file = st.file_uploader("Upload an audio file (mp3, wav, m4a)", type=["mp3", "wav", "m4a", "mp4"])
-
-# Streamlit's built-in mic recorder (works in most modern browsers)
-recorded_audio = st.audio_input("...or record directly here")
+audio_file = st.file_uploader(
+    "Upload an audio file (mp3, wav, m4a)",
+    type=["mp3", "wav", "m4a", "mp4"],
+    key=f"uploader_{st.session_state.session_id}",
+)
+recorded_audio = st.audio_input(
+    "...or record directly here",
+    key=f"recorder_{st.session_state.session_id}",
+)
 
 audio_to_process = audio_file if audio_file else recorded_audio
 
@@ -140,8 +177,34 @@ if audio_to_process is not None:
 
         st.divider()
         st.caption("⚕️ This is a pre-filter only. Every flagged case would be confirmed by a real human specialist at DEIC. The AI never diagnoses on its own.")
+
+        # Log this result to the session's running summary (no audio,
+        # no name - just flag + age group + time, so a worker can see
+        # a running count across a whole school visit).
+        if "session_log" not in st.session_state:
+            st.session_state.session_log = []
+        import datetime
+        st.session_state.session_log.append({
+            "Time": datetime.datetime.now().strftime("%H:%M:%S"),
+            "Age group": age_group,
+            "Result": report["flag"],
+            "Variation": f"{report['error_rate_percent']}%",
+        })
 else:
     st.caption("👆 Upload or record a reading above to run the check.")
+
+# ---------- SESSION SUMMARY (today's checks so far, no audio/names stored) ----------
+if st.session_state.get("session_log"):
+    st.divider()
+    st.markdown("### 📋 Today's session summary")
+    st.caption("No audio or names are stored — only the result and time, cleared when the page is closed.")
+    st.table(st.session_state.session_log)
+    normal_count = sum(1 for r in st.session_state.session_log if r["Result"] == "NORMAL")
+    flagged_count = len(st.session_state.session_log) - normal_count
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Children checked", len(st.session_state.session_log))
+    c2.metric("Normal", normal_count)
+    c3.metric("Needs a closer look", flagged_count)
 
 st.divider()
 st.caption("Built for NexHack 2.0 — Team Protectech")
