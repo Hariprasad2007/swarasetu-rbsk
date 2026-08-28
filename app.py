@@ -63,7 +63,24 @@ recorded_audio = st.audio_input("...or record directly here")
 audio_to_process = audio_file if audio_file else recorded_audio
 
 if audio_to_process is not None:
-    st.audio(audio_to_process)
+    # Custom player with the browser's download option disabled -
+    # we preview the recording so the user can confirm it, but we
+    # never expose a download path for the child's audio.
+    import base64
+    audio_bytes = audio_to_process.getvalue()
+    audio_b64 = base64.b64encode(audio_bytes).decode()
+    st.markdown(
+        f"""
+        <audio controls controlsList="nodownload noplaybackrate"
+               oncontextmenu="return false;" style="width:100%">
+            <source src="data:audio/wav;base64,{audio_b64}" type="audio/wav">
+        </audio>
+        <p style="font-size:0.8em;color:gray;">
+        🔒 Preview only — this recording is processed in-memory and is not stored or downloadable.
+        </p>
+        """,
+        unsafe_allow_html=True,
+    )
 
     if st.button("🔍 Check Reading", type="primary"):
         with st.spinner("AI is listening and checking the pattern..."):
@@ -104,4 +121,4 @@ else:
     st.caption("👆 Upload or record a reading above to run the check.")
 
 st.divider()
-st.caption("Built for NexHack 2.0 — Team Protectech")
+st.caption("Built for Vision to Venture 2.0 & NexHack 2.0 — Team Ctrl AI")
