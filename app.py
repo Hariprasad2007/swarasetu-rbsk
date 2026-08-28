@@ -179,17 +179,20 @@ if audio_to_process is not None:
         st.caption("⚕️ This is a pre-filter only. Every flagged case would be confirmed by a real human specialist at DEIC. The AI never diagnoses on its own.")
 
         # Log this result to the session's running summary (no audio,
-        # no name - just flag + age group + time, so a worker can see
-        # a running count across a whole school visit).
+        # no name - just flag + age group + time). Only ONE row per
+        # child: re-clicking "Check Reading" for the SAME child (before
+        # hitting Reset) updates that child's row instead of adding a
+        # new one each time.
         if "session_log" not in st.session_state:
-            st.session_state.session_log = []
+            st.session_state.session_log = {}  # keyed by session_id
         import datetime
-        st.session_state.session_log.append({
+        st.session_state.session_log[st.session_state.session_id] = {
+            "Child #": st.session_state.session_id + 1,
             "Time": datetime.datetime.now().strftime("%H:%M:%S"),
             "Age group": age_group,
             "Result": report["flag"],
             "Variation": f"{report['error_rate_percent']}%",
-        })
+        }
 else:
     st.caption("👆 Upload or record a reading above to run the check.")
 
@@ -198,11 +201,12 @@ if st.session_state.get("session_log"):
     st.divider()
     st.markdown("### 📋 Today's session summary")
     st.caption("No audio or names are stored — only the result and time, cleared when the page is closed.")
-    st.table(st.session_state.session_log)
-    normal_count = sum(1 for r in st.session_state.session_log if r["Result"] == "NORMAL")
-    flagged_count = len(st.session_state.session_log) - normal_count
+    log_rows = list(st.session_state.session_log.values())
+    st.table(log_rows)
+    normal_count = sum(1 for r in log_rows if r["Result"] == "NORMAL")
+    flagged_count = len(log_rows) - normal_count
     c1, c2, c3 = st.columns(3)
-    c1.metric("Children checked", len(st.session_state.session_log))
+    c1.metric("Children checked", len(log_rows))
     c2.metric("Normal", normal_count)
     c3.metric("Needs a closer look", flagged_count)
 
