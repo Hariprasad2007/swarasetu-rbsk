@@ -121,4 +121,4 @@ else:
     st.caption("👆 Upload or record a reading above to run the check.")
 
 st.divider()
-st.caption("Built for Vision to Venture 2.0 & NexHack 2.0 — Team Ctrl AI")
+st.caption("Built for NexHack 2.0 — Team Protectech")
