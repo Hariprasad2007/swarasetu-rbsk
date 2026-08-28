@@ -99,23 +99,62 @@ if "session_id" not in st.session_state:
 if "session_log" in st.session_state and not isinstance(st.session_state.session_log, dict):
     st.session_state.session_log = {}
 
+st.markdown(
+    """
+    <style>
+    div.stButton > button, div.stFormSubmitButton > button {
+        font-size: 1.15rem !important;
+        padding: 0.7rem 1.2rem !important;
+        border-radius: 14px !important;
+        font-weight: 700 !important;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 col_a, col_b = st.columns([3, 1])
 with col_a:
-    age_group = st.selectbox("Select the child's age group:", list(AGE_PASSAGES.keys()))
+    age_group = st.selectbox("👤 Child's age group:", list(AGE_PASSAGES.keys()))
 with col_b:
     st.write("")
     st.write("")
-    if st.button("🔄 New Child / Reset"):
+    if st.button("🔄 New Child"):
         st.session_state.session_id += 1
         st.rerun()
 
 EXPECTED_PASSAGE = AGE_PASSAGES[age_group]["text"]
 
-st.markdown("### Step 1 — Read this aloud")
-st.info(EXPECTED_PASSAGE)
+st.markdown(
+    f"""
+    <div style="
+        background-color:#FFF8E1;
+        border-radius:20px;
+        padding:32px 28px;
+        margin:16px 0 8px 0;
+        border:3px solid #FFD54F;
+        text-align:center;
+    ">
+        <p style="font-size:1.1rem;color:#8D6E00;margin:0 0 12px 0;font-weight:600;">
+            📖 Read this out loud
+        </p>
+        <p style="
+            font-size:2.1rem;
+            line-height:1.5;
+            color:#3E2C00;
+            font-weight:700;
+            margin:0;
+            font-family: 'Comic Sans MS', 'Trebuchet MS', sans-serif;
+        ">
+            {EXPECTED_PASSAGE}
+        </p>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 st.caption(AGE_PASSAGES[age_group]["note"])
 
-st.markdown("### Step 2 — Upload or record your reading")
+st.markdown("### 🎤 Now record the reading")
 audio_file = st.file_uploader(
     "Upload an audio file (mp3, wav, m4a)",
     type=["mp3", "wav", "m4a", "mp4"],
